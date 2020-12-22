@@ -1,0 +1,349 @@
+---
+title: A Replication Article; Insitutional Racism of Black and Indigenous Inmates through Unfair Preliminary Assessments
+author: "Matthew Caringi"
+date: "21 December 2020"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+abstract: In this paper, the examination and reproducibility of a written methodology discussion is preformed to view its effectiveness and ability to maintain the author’s originality. Assumptions on data filtering, variable grouping, and type of logistic regression model will be observed to define the differences between the results of this article to the original article. Our results reveal similar trends to the original article thus supporting its conclusion of the negative impact and unfair preliminary assessment of Black and Indigenous inmates. With this agreement in conclusion, it is appropriate to state that the written methodology is a balanced strategy of providing an effective guide as well as maintaining the author’s original work.
+bibliography: References.bib
+---
+**Keywords** Reproducibility; Tom Cardoso; Risk assessments; Institutional Racism; Bayesian logistic regression
+
+The following article was written using R (@citeR) and the final report was complied with R markdown (@citermarkdown). The following packages were used in this paper: Tidyverse (@citetidyverse), ggplot2 (@citeggplot2), dplyr (@citedplyr), brms (@citebrms), kableExtra (@citekextra), and knitr (@citeknitr)
+
+```{r setup, include=FALSE}
+#install.packages('tidyverse')
+#install.packages('ggplot2')
+#install.packages('brms')
+#install.packages('dplyr')
+#install.packages('knitr')
+#install.packages('kableExtra')
+library(tidyverse)
+library(ggplot2)
+library(brms)
+library(dplyr)
+library(kableExtra)
+library(knitr)
+```
+
+## Introduction
+
+  In the Globe and Mail, an article, “Bias behind bars: A Globe investigation finds a prison system stacked against Black and Indigenous inmates” (@cardoso_2020), was written describing racial bias through the analysis of the inmate’s risk assessments using data from the Correctional Service of Canada. The author/crime and justice reporter, Tom Cardoso, investigated this aspect by observing the inmate’s initial assessment scores set by correctional officers to determine the inmate’s security level. They noticed how Black and Indigenous inmates were subjected to harder scoring thus resulted in a more stricter security level such as maximum security. To support these results, Cardoso utilized multiple logistic regression models of the CSC dataset in order to examine the influence of an inmate’s personal characteristics on their security level. Additionally, these initial risk assessment scores judge the inmates on certain aspects which heavily influences the decisions after conviction, for example parole request. Cardoso also makes use of more logistic regression models to investigate inmate reintegration back into society. This revealed that Black and Indigenous inmates would reintegrate better and are less likely to reoffend than White inmates. Overall, Cardoso present relevant conclusions on how Black and Indigenous inmates are subjected to more stricter assessments while showing better reintegration potential.
+
+  Within research articles, reproducibility is extremely important for the validation of results. When a paper is not reproducible, this decreases the credibility of the paper and results in the article being less impactful. If a paper cannot be reproduced by another person, this is normally due to the original’s author lack of instructions in the methodology or in the worst case, the original author’s manipulation of the results to favor their hypothesis. To avoid this reduction in credibility, the original work or R code can be linked. Unfortunately, in the professional field this is not a common practice due to the fact that authors do not want others to steal and plagiarize their work. Therefore, in this paper we attempt to reproduce Tom Cardoso’s article based on the posted methodology (@cardoso_method_2020). One research aim examines the effectiveness of a written methodology to provide adequate instructions for reproducibility while maintaining the author’s recognition for their original work. 
+
+  In this paper, we reproduced the data results and analysis found in Tom Cardoso’s article based on a written story-like methodology. To note, the R code was not posted or linked thus decisions are based on our assumptions from reading the methodology discussion. Following the methodology, the Correctional Service of Canada dataset provided by the Globe and Mail was used (@cardoso_method_2020). Filtering and grouping of the dataset were followed as best as possible based on our interpretation and hints from the author such as ‘filtering this allowed these many observations/rows’.  One major interpretation was the specific type of logistic regression model used. In this paper, we used  Bayesian logistic  regression models while it is unclear which type of logistic regression model was used in Cardoso’s original article.
+
+
+## Data
+
+```{r, include=FALSE}
+#Data
+filtered_offence_data <- read_csv("~/Desktop/Caringi_Article/Cardoso_Reproducibility_Paper/Outputs/clean_data.csv")
+
+#Relevel
+filtered_offence_data$charge_weight <- as.factor(filtered_offence_data$charge_weight)
+filtered_offence_data$charge_weight <- fct_relevel(filtered_offence_data$charge_weight, c("10", "20", "30", "40", "50", 
+"60", "70", "80", "90", "100", "110", "120", "130", "140", "150", "160", "170", "180", "200", "210", "220", 
+"230", "240", "250", "260", "270", "280", "300", "320", "330", "340", "360", "370", "380", "390", "400", "420","460", "480", "490", "500", "510", "520", "580", "600", "630", "640", "680", "710", "720", "750", "780", "790","830", "840", "850", "1000", "1080", "1090", "1320", "1590", "1690", "1700", "1830", "1860", "7650"))
+
+filtered_offence_data$charge_weight <- as.integer(filtered_offence_data$charge_weight)
+
+filtered_offence_data$race_grouped <- as.factor(filtered_offence_data$race_grouped)
+filtered_offence_data$race_grouped <- fct_relevel(filtered_offence_data$race_grouped, "White")
+
+filtered_offence_data$security_model_variable <- as.factor(filtered_offence_data$security_model_variable)
+filtered_offence_data$security_model_variable <- fct_relevel(filtered_offence_data$security_model_variable, "MEDIUM/MINIMUM")
+
+filtered_offence_data$FISCAL.YEAR <- as.factor(filtered_offence_data$FISCAL.YEAR)
+
+filtered_offence_data$STATIC.RISK <- as.factor(filtered_offence_data$STATIC.RISK)
+filtered_offence_data$STATIC.RISK<- fct_relevel(filtered_offence_data$STATIC.RISK, "LOW")
+
+filtered_offence_data$REINTEGRATION.POTENTIAL <- as.factor(filtered_offence_data$REINTEGRATION.POTENTIAL)
+filtered_offence_data$REINTEGRATION.POTENTIAL <- fct_relevel(filtered_offence_data$REINTEGRATION.POTENTIAL, "LOW")
+
+filtered_offence_data$reint_model_variable <- as.factor(filtered_offence_data$reint_model_variable)
+
+```
+  The raw dataset was derived from Cardoso's methodology article (@cardoso_method_2020). Cardoso requested the dataset from the Correctional Service of Canada. This dataset includes every inmate that has a sentence of two years or longer from March 31st, 2012 to March 31st, 2018. It includes the inmates’ characteristics such as age, race, religion, etc as well as their assessment scores and offence details. 
+
+ All refining of the dataset was based on assumptions and interpretation from the written methodology article. First, the dataset was filtered to only include the variables in use: Fiscal year, Offender Number, Race, Gender, Age, In Custody/ Community, Jurisdiction, Offender Security Level, Static Risk Score, Reintegration Potential Score, and Offence Description. Any inmates or charges under provincial jurisdiction were filtered out. Thus, the scope of this article includes all of Canada due to the focus on federal jurisdiction. Next, many of the entries were filtered out for any 'NAs' or missing responses within most categories in order to have a proper display in the model. The multiple unique entries in the category "RACE" were grouped and simplified into four groups: White, Black, Indigenous, and Other Racial Groups. To give weight to the unique criminal charges, each charge was match with a given number based on the Crime Severity Index (@CrimeSeverityIdex). These numbers were the basis of determining the charges' influence on the variables of interest. It was noted that multiple individual inmates had multiple charges, thus the highest weighed offence was selected for each inmate and created as a new variable. 
+
+  One important variable of interest is the offender’s security level. This variable displays whether the inmate is serving their sentence in a maximum, medium or minimum security level. Additionally, another important variable to note is the reintegration potential score. An inmate’s reintegration potential is the ability that the inmate can rejoin into society as a law-abiding citizen. These two variables are assigned during a preliminary assessment when the inmate first gets convicted by the institution’s officers. In theory, this decision should mostly be based on the inmate’s crime/offence and the static risk of the individual. Static risk is the measurement of the individual’s criminal history through the fact of whether the inmate has been convicted before, and for how many times. Thus, we see that this is not always the case, and that characteristic variables may be taken into account. 
+
+
+```{r, echo=FALSE}
+# Filtered data for gender pie chart
+gender.pie.data <-filtered_offence_data %>%
+  filter(IN.CUSTODY.COMMUNITY == "In Custody")
+
+# Pie chart of gender in jail
+pie_gender <- gender.pie.data %>%
+  ggplot(aes(y = (..count..)/sum(..count..), x= "", fill = GENDER)) +
+  geom_bar(stat = "count", width = 1) +
+  coord_polar("y", start=0) +
+  scale_fill_brewer(palette="Blues") +
+  theme_minimal() +
+  labs(
+    title = "Figure 1: Distribution of Gender",
+    x = " ",
+    y = " ",
+    caption = "Cardoso, Tom. How we did it...")
+pie_gender  
+```
+
+Figure 1 shows the distribution of gender within the inmates in custody. Within this dataset, males make up the majority of total inmates at 94.4%. 
+
+
+```{r, echo=FALSE}
+# Filtered data for racial pie chart
+racial.pie.data <-filtered_offence_data %>%
+  filter(FISCAL.YEAR == "YE1718")
+
+# Pie chart of race in jail
+pie_race <- racial.pie.data %>%
+  ggplot(aes(y = (..count..)/sum(..count..), x= "", fill = race_grouped)) +
+  geom_bar(stat = "count", width = 1) +
+  coord_polar("y", start=0) +
+  scale_fill_brewer(palette="Blues") +
+  theme_minimal() +
+  labs(
+    title = "Figure 2: Distribution of Race Grouping",
+    x = " ",
+    y = " ",
+    fill = "Ethnicity",
+    caption = "Cardoso, Tom. How we did it...")
+pie_race 
+```
+
+
+Figure 2 presents the distribution of inmates’ race in 2018. It is shown that majority of inmates in this dataset are White followed by Indigenous, Other Racial Groups, and Black at 57.6%, 26.7%, 7.9%, and 7.8% respectively.
+
+
+```{r, echo=FALSE}
+#reintegration potential inmate scores across race
+reint_pot_race_graph <- filtered_offence_data %>%
+  filter(!REINTEGRATION.POTENTIAL == "") %>%
+  filter(!race_grouped == "Other Racial Groups") %>%
+  ggplot( aes(x = race_grouped, fill = REINTEGRATION.POTENTIAL)) + 
+  geom_bar(aes(fill = REINTEGRATION.POTENTIAL), position = "dodge") +
+  geom_text(stat="count", aes(label=sprintf("%.01f %%",..count../sum(..count..)*100)), 
+            position=position_dodge(width = 1), vjust = 0) +
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  scale_fill_brewer(palette="Blues") +
+  theme_minimal() +
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  labs(
+    title = "Figure 3: Reintegration Potential Score over Ethnicity",
+    x = "Ethnicity",
+    y = "Number of Inmates",
+    fill = "Reintegration Potential Score",
+    caption = "Cardoso, Tom. How we did it...")
+
+reint_pot_race_graph
+```
+
+
+Figure 3 displays the reintegration potential score over the different racial groups. The percentages of each variable are listed above. It is to note that the racial group ‘White’ has a higher population (Figure 2). Additionally, the racial group ‘Other Racial Groups’ were excluded due to lack of race specificity. 
+
+
+```{r, echo=FALSE}
+#Offender security level  across race
+off_sec_race_graph <- filtered_offence_data %>%
+  filter(!OFFENDER.SECURITY.LEVEL == "") %>%
+  filter(!race_grouped == "NA") %>%
+  filter(!race_grouped == "Other Racial Groups") %>%
+  ggplot( aes(x = race_grouped, fill = OFFENDER.SECURITY.LEVEL)) + 
+  geom_text(stat="count", aes(label=sprintf("%.01f %%",..count../sum(..count..)*100)), 
+            position=position_dodge(width = 1), vjust = 0) +
+  geom_bar(position = "dodge") +
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  scale_fill_brewer(palette="Blues") +
+  theme_minimal() +
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  labs(
+    title = "Figure 4: Inmate's Security Level over Ethnicity",
+    x = "Ethnicity",
+    y = "Number of Inmates",
+    fill = "Offender Security Level",
+caption = "Cardoso, Tom. How we did it...")
+off_sec_race_graph
+```
+
+
+Figure 4 shows the offender security level over the different racial groups. The percentages of each variable are presented above. It is to note that the racial group ‘White’ has a higher population (Figure 2). Additionally, the racial group ‘Other Racial Groups’ were excluded due to lack of race specificity.
+
+## Models
+
+  In total, six models were created. Each model was built on a Bayesian statistical inference to view the multiple variables’ influence on the variable of interest. A Bayesian model was chosen over frequentist for two reasons. The first reason is that a Bayesian statistical inference focuses more on the variable’s probability from the specific data distribution. Thus, it is possible to state probabilities with a confidence interval. Secondly, a Bayesian model was used to also observe if a different method aiming for the same result will show impact or differ anything. In Cardoso’s methodology, no specific logistic regression model was stated but through common methods, it is appropriate to state that it was most likely with a frequentist statistical inference. 
+
+  To create these models, the brm function in R was used. This function allows the creation of a Bayesian linear regression model which can display the influence of the predictor variables on the variable of interest. This model will directly show whether a predictor variable will have a positive or negative impact based on the coefficient’s sign. If the coefficient is a negative value, then it will have a negative influence and vice versa with a positive coefficient. The outcome is binary but is different for each model thus the specifics are deliberately stated within the description of each model. By investigating the log of this linear regression, we can observe the independent variable’s influence on the outcome. For example, we use a variable’s coefficient as an exponent for Euler’s number (e) to obtain an odds ratio of the variable to the reference. This number (p) will be divided by 1+p to obtain a probability of the outcome from the variable. 
+
+  The prior information needed is the proportion of the total inmates receiving the outcome of interest. This information will be derived from the dataset to give an accurate and appropriate proportion. In model one and two, the prior information will be the proportion of inmates that receive high security level which is 0.10. In model three and four, the prior information will be proportion of inmates that receive low reintegration potential scores, which is 0.30. Finally, in model five and six, the prior information will be the proportion of inmates that have re-offended which is 0.95. These prior needs will be weighed in with outcome proportion calculations.
+
+  The models are subdivided into two groups, one looking at only male inmates and the other looking at only female inmates. Each subgroup contains three models investigating different outcomes: high security level, low reintegration potential, and likelihood to re-offend. The models were designed with a significance of 0.05 or a confidence interval of 95%. No divergence or diagnostic issues were observed when the models ran.
+
+  All the variables used in the models include age, static risk, fiscal year, weighed offence, racial groups, and reintegration potential score. Age and weighed offence were used as a continuous integer rather than a categorical variable. This was chosen in order to observe the overall trend and influence to lessen the effects of outliers if any occurred. Static risk, fiscal year, racial groups, and reintegration potential score were all used as a categorical variable. This was preformed to observe the influence of the independent predictor variables’ subsets. It was appropriate in these models in order to see and compare the effect of the specific subsets. 
+
+
+```{r, include=FALSE}
+#Race affects inmate's security level in men
+male_filtered_offence_data <- filtered_offence_data %>%
+  filter(GENDER == "MALE")
+
+male_race_security_model <-
+  brm(security_model_variable ~ AGE + race_grouped + 
+        STATIC.RISK + FISCAL.YEAR + charge_weight,
+      data = male_filtered_offence_data, family = bernoulli)
+
+summary(male_race_security_model)
+```
+
+```{r, echo=FALSE}
+mcmc_plot(male_race_security_model)
+```
+
+In model one, we looked at the influence on inmates’ security level in men. The variables used to investigate the influence include age, static risk, fiscal year, the weighed offence, and most importantly racial group. The model aimed at the influence of obtaining maximum security level. The base value of static risk, fiscal year, and racial group are Low, 2012, and White respectively. The logistic equation from the model is presented below:
+
+$$P(Maximum Security Level_{male}) = \mbox{logit}^{-1}(-3.13 - 0.05(x_{age}) - 0.04(x_{indig}) - 0.04(x_{otherrace}) + 0.19(x_{black}) + $$
+$$1.54(x_{S.R.MED}) + 3.13(x_{S.R.HIGH}) - 0.24(x_{2013}) - 0.26(x_{2014}) - 0.23(x_{2015}) - 0.26(x_{2016}) - 0.16(x_{2017}) - 0.37(x_{2018}) + 0.02(x_{offence})) $$
+
+```{r, include=FALSE}
+#Race affects inmate's security level in women
+female_filtered_offence_data <- filtered_offence_data %>%
+  filter(GENDER == "FEMALE")
+
+female_race_security_model <-
+  brm(security_model_variable ~ AGE + race_grouped + 
+        STATIC.RISK + FISCAL.YEAR + charge_weight,
+      data = female_filtered_offence_data, family = bernoulli)
+
+summary(female_race_security_model)
+```
+
+```{r, echo=FALSE}
+mcmc_plot(female_race_security_model)
+```
+
+Model two also investigated the influence on inmate’s security levels but in females. Similarly, the variables used to investigate the influence include age, static risk, fiscal year, the weighed offence, racial group. The model aimed at the influence of obtaining maximum security level. The base value of static risk, fiscal year, and racial group are low, 2012, and White respectively. The logistic equation from the model is presented below:
+
+$$P(Maximum Security Level_{female}) = \mbox{logit}^{-1}(-4.57 - 0.04(x_{age}) + 0.19(x_{indig}) - 0.71(x_{otherrace}) + 0.33(x_{black}) + $$
+$$2.30(x_{S.R.MED}) + 3.85(x_{S.R.HIGH}) + 0.31(x_{2013}) + 0.34(x_{2014}) + 0.13(x_{2015}) + 0.04(x_{2016}) - 0.57(x_{2017}) - 0.28(x_{2018}) + 0.01(x_{offence})) $$
+```{r, include=FALSE}
+#Race affects reintegration potential in men
+male_reinte_model <- 
+  brm(reint_model_variable ~ AGE + race_grouped + 
+        STATIC.RISK + FISCAL.YEAR + charge_weight,
+      data = male_filtered_offence_data, family = bernoulli)
+
+summary(male_reinte_model)
+```
+
+```{r, echo=FALSE}
+mcmc_plot(male_reinte_model)
+```
+
+The third model investigated the influence on the reintegration potential score in men. The variables used to investigate the influence include age, static risk, fiscal year, the weighed offence, and racial group. The model aimed at the influence of obtaining low reintegration potential score. The base value of static risk, fiscal year, and racial group are low, 2012, and White respectively. The logistic equation from the model is presented below:
+
+$$P(Low Reintegration Potential_{male}) = \mbox{logit}^{-1}(-4.05 - 0.02(x_{age}) + 0.66(x_{indig}) - 0.54(x_{otherrace}) - 0.14(x_{black}) + $$
+$$2.30(x_{S.R.MED}) + 5.25(x_{S.R.HIGH}) - 0.06(x_{2013}) - 0.09(x_{2014}) - 0.21(x_{2015}) - 0.18(x_{2016}) - 0.26(x_{2017}) - 0.27(x_{2018})) $$
+
+```{r, include=FALSE}
+#Race affects reintegration potential in women
+female_reinte_model <- 
+  brm(reint_model_variable ~ AGE + race_grouped + 
+        STATIC.RISK + FISCAL.YEAR + charge_weight,
+      data = female_filtered_offence_data, family = bernoulli)
+
+summary(female_reinte_model)
+```
+
+```{r, echo=FALSE}
+mcmc_plot(female_reinte_model)
+```
+
+Model four also investigated the influence on the reintegration potential score but in women. The variables used to investigate the influence include age, static risk, fiscal year, the weighed offence, and racial group. The model aimed at the influence of obtaining low reintegration potential score. The base value of static risk, fiscal year, and racial group are low, 2012, and White respectively. The logistic equation from the model is presented below:
+
+$$P(Low Reintegration Potential_{female}) = \mbox{logit}^{-1}(-4.41 - 0.01(x_{age}) + 0.2(x_{indig}) - 0.25(x_{otherrace}) - 0.11(x_{black}) + $$
+$$2.24(x_{S.R.MED}) + 4.74(x_{S.R.HIGH}) + 0.57(x_{2013}) + 0.15(x_{2014}) + 0.30(x_{2015}) + 0.48(x_{2016}) - 0.12(x_{2017}) + 0.22(x_{2018})) $$
+
+```{r, include=FALSE}
+#Race & reintegration score affects reoffending in men
+male_reoffend_model <- 
+  brm(multiple.offenses ~ AGE + race_grouped + 
+        REINTEGRATION.POTENTIAL,
+      data = male_filtered_offence_data, family = bernoulli)
+
+summary(male_reoffend_model)
+```
+
+```{r, echo=FALSE}
+mcmc_plot(male_reoffend_model)
+```
+
+The fifth model looked at the influence on reoffending or committing more than one crime in male inmates. The variables used to investigate the influence include age, racial group, and reintegration potential score. The purpose of using the reintegration potential score was to observe the accuracy of the score provided to the inmate. The model aimed at the influence of reoffending. The base value of racial group, and reintegration potential are White, and low respectively. The equation from the model is presented below:
+
+$$P(Reoffending_{male}) = \mbox{logit}^{-1}(4.03 - 0.47(x_{indig}) - 0.35(x_{otherrace}) - 0.26(x_{black}) - 0.46(x_{R.P.MED}) - 1.35(x_{R.P.HIGH})) $$
+
+```{r, include=FALSE}
+#Race & reintegration score affects reoffending in women
+female_reoffend_model <- 
+  brm(multiple.offenses ~ AGE + race_grouped + 
+        REINTEGRATION.POTENTIAL,
+      data = female_filtered_offence_data, family = bernoulli)
+
+summary(female_reoffend_model)
+```
+
+```{r, echo=FALSE}
+mcmc_plot(female_reoffend_model)
+``` 
+
+Lastly, the sixth model also investigated influence on reoffending but in women. Similarly, the variables used to investigate the influence include age, racial group, and reintegration potential score. The model aimed at the influence of reoffending. The base value of racial group, and reintegration potential are White, and low respectively. The logistic equation from the model is presented below:
+  
+$$P(Reoffending_{female}) = \mbox{logit}^{-1}(3.20 - 0.08(x_{indig}) - 0.37(x_{otherrace}) - 0.89(x_{black}) - 0.46(x_{R.P.MED}) - 1.21(x_{R.P.HIGH})) $$
+
+
+## Results
+
+Our graphs display the demographic and general scoring system within the federal prison system. In Figure 1, it is shown that majority, about 96.4%, of the inmates in the data are males. Additionally, majority of these inmates are White, followed by Indigenous, Other Racial Groups, and Black (Figure 2). When observing inmate reintegration potential score across the racial groups, it is noted that the ratios are uneven (Figure 3). In scope of white inmates, the scores skew highly towards medium to high reintegration potential. This is unlike the scores seen in Indigenous and Black inmates whose score lean towards medium to low. When viewing the security levels given to the individual inmates, it is clear that the ratio of white inmates receiving maximum security is very low compared to indigenous and black inmates (Figure 4). The percentage of white inmates in maximum security is similar to the percentage of black and indigenous inmates even when the population of white inmates is significantly larger than the two other racial groups. These trends are also shown and supported within model 1-4.
+
+```{r, include=FALSE}
+Comparison.data.table <- read_csv("~/Desktop/Caringi_Article/Cardoso_Reproducibility_Paper/Outputs/comparison_result_table.csv")
+```
+
+```{r, echo=FALSE}
+comp_data_summary <- Comparison.data.table %>%
+  kbl(caption = "Comparison Data Table") %>%
+  kable_classic_2()  %>%
+  kable_styling(latex_options="scale_down")
+
+comp_data_summary
+```
+
+Table 1: Compares the results from the original article by Cardoso to the results in this paper. The 'topics' were assigned based on the conclusions made by Tom Cardoso.
+
+## Discussion
+
+  Within my models and the mcmc plots, we can observe the independent variables’ distribution. It is shown that majority of the predictor variables show a small distribution. This is supported with the error bars in the mcmc plot which show a 95% confidence interval. A smaller interval is proportional to the distribution of the variable; thus, it is appropriate to state that the variables present a small distribution. Additionally, majority of the variables in the male data models show statistical significance. Statistical significance was proven with the use of the 95% confidence interval. If the interval contained the value of ‘0’, then it is considered not statistically significant and vice versa if it does not contain the value ‘0’. All racial group predicator variables in the comparison data table are all proven to be statistically significant.
+
+  There were two major predicator variables that carried the most weight. Shown in model 1-4, the major variable is static risk. When observing the outcome of interest in model 1-4 (offender security level and reintegration potential), it is reasonable why this variable is heavily weighed. An individual with a high static risk or has a high criminal history would most likely be sentenced to a maximum security level and have very low reintegration potential which is shown with my model. Additionally, the most influential variable within model 5 & 6 is the reintegration potential score. This variable is also reasonable to the outcome of interest (likelihood to re-offend) because an individual with a high reintegration potential score will most likely not re-offend. It is also interesting to note that the reintegration potential score is designated by a parole officer during the preliminary assessment. This can represent the accuracy of this score in terms of the likelihood that an inmate will re-offend.
+
+  In terms of our paper, a trend is shown of institutional racism within the federal prison system. This is shown within the skewed scoring system across the different ethnicities. For example, black and indigenous inmates are more likely to obtain a low reintegration potential score as well as a higher chance to be put into a maximum-security level. These factors play a crucial role on the progress and future of the inmate. Additionally, in our reoffending model, it is shown that black and indigenous inmates are less likely to reoffend. Thus, these results show a disadvantage to black and indigenous inmates during the scoring process even though those demographics are less likely to repeat criminal actions.
+
+  These trends are similar to Cardoso’s article where they present a related conclusion. In their article, it was shown that Black men were more likely to receive a maximum-security level as well as Indigenous men were more likely to obtain a lower reintegration score when compared to white males. Shown in the comparison data table above are the results between the two articles. Although the trends are the same, the influence of the models’ variables are less severe in my paper. Compared to Cardoso’s results, my model about Indigenous inmates were more closely related than my model results about black inmates. This can be the cause of the small population portion of black inmates in the dataset and the lack of readjusting this difference. Overall, the trend of institutional racism in federal prison systems stated in Cardoso’s article are supported through my paper but it is not appropriate to state that my results reinforce the exact influence of the variables found in Cardoso’ paper.
+
+  To determine the effectiveness of a written methodology, the results from our paper will be compared against Cardoso’s paper. Gender distribution of the dataset between both papers show very similar results with a difference of only 0.6%. When looking at racial distribution in 2018, our results are also very similar. The population portion of indigenous and black inmates are exact but white inmates and inmates from other racial groups differ slightly. With these related results, it is appropriate to state that the filtering and grouping of the dataset were almost identical. When comparing the model results, although the trend is similar, the exact values are not. It is to note that the model results revolving indigenous inmates were more closely related to Cardoso’s results. Many obstacles and limitations may be responsible for the differ in values. A future step involves conducting more replication studies on Cardoso’s paper in order to gain a more define conclusion whether written methodologies are better than providing the code. More attempts can normalize the variation of results obtained which directly relate to the effectiveness of Cardoso’s written methodology. Overall, it is appropriate to state that Cardoso’s written methodology is an effective format to portray a guide for a replication paper.
+
+  There are many limitations to this study including refining the dataset. One limitation includes the weighing of the inmates’ offenses. Even with the assistance from the Canadian Severity Index table, assumption was made on some charges that couldn’t be found on the table. This was mostly due to the short form abbreviation of the offence that made it difficult to locate. Another limitation includes my ability and experience with R coding. With less than 4 months of experience, it is likely that more complex code such as a logistic regression model are not as precise as a professional statistician. This can result in the similar trend of data but not identical results which is shown within the comparison data table. 
+
+  Future steps can involve further research on institutional racism in order to focus and bring to light this social issue. More research can involve investigating the differences between inmates with identical charges. This can overview the differences in sentence severity and length based on the individual as well as incorporate a social-economic status as a factor. Additionally, a larger dataset on females can be obtained by integrating the same data from the United States of America. A larger dataset will allow a more reliable and statistical investigation of the institutional racism on female inmates. These future studies can provide a clearer insight about the harsher and unfair prosecution faced by minority groups such as Black and Indigenous citizens.
+
+
+
+
+## References
+
