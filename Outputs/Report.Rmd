@@ -13,6 +13,9 @@ bibliography: References.bib
 
 The following article was written using R (@citeR) and the final report was complied with R markdown (@citermarkdown). The following packages were used in this paper: Tidyverse (@citetidyverse), ggplot2 (@citeggplot2), dplyr (@citedplyr), brms (@citebrms), kableExtra (@citekextra), and knitr (@citeknitr)
 
+The associated GitHub Repo can be found at https://github.com/mcaringi/Cardoso_Reproducibility_Paper
+
+
 ```{r setup, include=FALSE}
 #install.packages('tidyverse')
 #install.packages('ggplot2')
